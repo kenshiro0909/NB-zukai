@@ -17,7 +17,8 @@ import {
   X,
   AlertCircle,
   Link as LinkIcon,
-  Maximize2
+  Maximize2,
+  Edit2 // 編集アイコン追加
 } from 'lucide-react';
 
 // --- Initial Data (Defaults) ---
@@ -218,14 +219,19 @@ const Header = ({ onHomeClick }) => (
   </header>
 );
 
-const CategoryCard = ({ category, onClick, onDelete }) => {
+const CategoryCard = ({ category, onClick, onDelete, onEdit }) => {
   const Icon = getIcon(category.iconName);
   
   const handleDelete = (e) => {
-    e.stopPropagation(); // Stop click from triggering card selection
+    e.stopPropagation(); 
     if (window.confirm(`カテゴリー「${category.name}」を削除しますか？\n含まれるプロンプトもすべて削除されます。`)) {
       onDelete(category.id);
     }
+  };
+
+  const handleEdit = (e) => {
+    e.stopPropagation();
+    onEdit(category);
   };
 
   return (
@@ -233,13 +239,22 @@ const CategoryCard = ({ category, onClick, onDelete }) => {
       onClick={() => onClick(category.id)}
       className="group relative bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl hover:border-yellow-200 transition-all duration-300 cursor-pointer flex flex-col items-center text-center h-full active:scale-[0.98] overflow-hidden"
     >
-      <button 
-        onClick={handleDelete}
-        className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-sm text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full shadow-sm z-20 transition-all duration-200 border border-transparent hover:border-red-100"
-        title="カテゴリーを削除"
-      >
-        <Trash2 size={16} />
-      </button>
+      <div className="absolute top-3 right-3 flex space-x-1 z-20">
+        <button 
+          onClick={handleEdit}
+          className="p-2 bg-white/90 backdrop-blur-sm text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-full shadow-sm transition-all duration-200 border border-transparent hover:border-blue-100"
+          title="カテゴリーを編集"
+        >
+          <Edit2 size={16} />
+        </button>
+        <button 
+          onClick={handleDelete}
+          className="p-2 bg-white/90 backdrop-blur-sm text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full shadow-sm transition-all duration-200 border border-transparent hover:border-red-100"
+          title="カテゴリーを削除"
+        >
+          <Trash2 size={16} />
+        </button>
+      </div>
 
       {category.imageUrl ? (
         <div className="w-full h-32 relative mb-4 overflow-hidden">
@@ -392,11 +407,12 @@ const Modal = ({ isOpen, onClose, title, children }) => {
   );
 };
 
-const AddCategoryForm = ({ onSubmit, onClose }) => {
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
-  const [color, setColor] = useState('bg-blue-500');
+// 共通化されたカテゴリーフォーム
+const CategoryForm = ({ onSubmit, onClose, initialData = null }) => {
+  const [name, setName] = useState(initialData?.name || '');
+  const [description, setDescription] = useState(initialData?.description || '');
+  const [imageUrl, setImageUrl] = useState(initialData?.imageUrl || '');
+  const [color, setColor] = useState(initialData?.color || 'bg-blue-500');
 
   const colors = [
     'bg-blue-500', 'bg-red-500', 'bg-purple-500', 
@@ -407,7 +423,16 @@ const AddCategoryForm = ({ onSubmit, onClose }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!name.trim()) return;
-    onSubmit({ name, description, color, imageUrl, iconName: 'Layout' });
+    
+    // idは新規作成時のみ生成、更新時は既存のものを維持するため呼び出し元で処理
+    onSubmit({ 
+      id: initialData?.id, 
+      name, 
+      description, 
+      color, 
+      imageUrl, 
+      iconName: initialData?.iconName || 'Layout' 
+    });
     onClose();
   };
 
@@ -435,7 +460,7 @@ const AddCategoryForm = ({ onSubmit, onClose }) => {
           />
           <LinkIcon size={18} className="absolute left-3 top-3.5 text-gray-400" />
         </div>
-        <p className="text-xs text-gray-500 mt-1">表示したい画像のURLを入力してください。</p>
+        <p className="text-xs text-gray-500 mt-1">カテゴリーカードに表示する画像URL。空の場合はアイコンが表示されます。</p>
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">説明</label>
@@ -462,7 +487,7 @@ const AddCategoryForm = ({ onSubmit, onClose }) => {
       </div>
       <div className="pt-4">
         <button type="submit" className="w-full bg-gray-900 text-white font-bold py-3.5 rounded-xl hover:bg-gray-800 active:scale-95 transition-all shadow-lg">
-          カテゴリーを作成
+          {initialData ? 'カテゴリーを更新' : 'カテゴリーを作成'}
         </button>
       </div>
     </form>
@@ -475,8 +500,6 @@ const AddPromptForm = ({ onSubmit, onClose }) => {
   const [description, setDescription] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   
-  // Tag input state removed as requested
-
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!title.trim() || !prompt.trim()) return;
@@ -558,7 +581,8 @@ export default function App() {
   const [toast, setToast] = useState(null); // { message, type }
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
-  const [zoomedImage, setZoomedImage] = useState(null); // State for lightbox
+  const [zoomedImage, setZoomedImage] = useState(null); 
+  const [editingCategory, setEditingCategory] = useState(null); // 編集中のカテゴリー
 
   // Load Data from LocalStorage
   useEffect(() => {
@@ -607,11 +631,18 @@ export default function App() {
     document.body.removeChild(textArea);
   };
 
-  const handleAddCategory = (newCategoryData) => {
-    const newCategory = { ...newCategoryData, id: generateId() };
+  const handleAddCategory = (categoryData) => {
+    const newCategory = { ...categoryData, id: generateId() };
     setCategories(prev => [...prev, newCategory]); 
     setPromptsData(prev => ({ ...prev, [newCategory.id]: [] }));
     showToast(`「${newCategory.name}」を作成しました`);
+  };
+
+  const handleUpdateCategory = (updatedData) => {
+    setCategories(prev => prev.map(c => 
+      c.id === updatedData.id ? { ...c, ...updatedData } : c
+    ));
+    showToast("カテゴリーを更新しました");
   };
 
   const handleDeleteCategory = (categoryId) => {
@@ -622,6 +653,16 @@ export default function App() {
       return newData;
     });
     showToast("カテゴリーを削除しました");
+  };
+
+  const openEditCategoryModal = (category) => {
+    setEditingCategory(category);
+    setIsCategoryModalOpen(true);
+  };
+
+  const openAddCategoryModal = () => {
+    setEditingCategory(null);
+    setIsCategoryModalOpen(true);
   };
 
   const handleAddPrompt = (newPromptData) => {
@@ -711,13 +752,14 @@ export default function App() {
                     category={category} 
                     onClick={setActiveCategory} 
                     onDelete={handleDeleteCategory}
+                    onEdit={openEditCategoryModal}
                   />
                 ))}
               </div>
             </div>
 
             {/* FAB for Adding Category */}
-            <Fab onClick={() => setIsCategoryModalOpen(true)} icon={Plus} label="カテゴリーを追加" />
+            <Fab onClick={openAddCategoryModal} icon={Plus} label="カテゴリーを追加" />
           </div>
         )}
 
@@ -778,10 +820,11 @@ export default function App() {
       <Modal 
         isOpen={isCategoryModalOpen} 
         onClose={() => setIsCategoryModalOpen(false)} 
-        title="新しいカテゴリーを追加"
+        title={editingCategory ? "カテゴリーを編集" : "新しいカテゴリーを追加"}
       >
-        <AddCategoryForm 
-          onSubmit={handleAddCategory} 
+        <CategoryForm 
+          initialData={editingCategory}
+          onSubmit={editingCategory ? handleUpdateCategory : handleAddCategory} 
           onClose={() => setIsCategoryModalOpen(false)} 
         />
       </Modal>

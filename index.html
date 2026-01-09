@@ -1,870 +1,927 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Copy, 
-  Check, 
-  Layout, 
-  Image as ImageIcon, 
-  PieChart, 
-  Monitor, 
-  ArrowLeft, 
-  Search,
-  Zap,
-  Camera,
-  Layers,
-  Sparkles,
-  Plus,
-  Trash2,
-  X,
-  AlertCircle,
-  Link as LinkIcon,
-  Maximize2,
-  Edit2 // 編集アイコン追加
-} from 'lucide-react';
-
-// --- Initial Data (Defaults) ---
-
-const DEFAULT_CATEGORIES = [
-  { 
-    id: 'zukai', 
-    name: '図解・インフォグラフィック', 
-    description: '複雑な概念を可視化する図解スタイル', 
-    iconName: 'PieChart', 
-    color: 'bg-blue-500',
-    imageUrl: '' 
-  },
-  { 
-    id: 'thumbnail', 
-    name: 'YouTubeサムネイル', 
-    description: 'クリック率を高めるインパクトのある構図', 
-    iconName: 'ImageIcon', 
-    color: 'bg-red-500',
-    imageUrl: ''
-  },
-  { 
-    id: 'lp', 
-    name: 'LP・Webデザイン', 
-    description: 'ランディングページのセクションやUI', 
-    iconName: 'Monitor', 
-    color: 'bg-purple-500',
-    imageUrl: ''
-  },
-  { 
-    id: 'icon', 
-    name: 'アプリアイコン・ロゴ', 
-    description: 'シンプルで視認性の高いアイコン', 
-    iconName: 'Zap', 
-    color: 'bg-yellow-500',
-    imageUrl: ''
-  },
-  { 
-    id: 'photo', 
-    name: 'リアル写真・ポートレート', 
-    description: '高精細な実写風フォトグラフィー', 
-    iconName: 'Camera', 
-    color: 'bg-green-500',
-    imageUrl: ''
-  },
-  { 
-    id: 'background', 
-    name: '背景・テクスチャ', 
-    description: 'スライドや壁紙に使える素材', 
-    iconName: 'Layers', 
-    color: 'bg-gray-500',
-    imageUrl: ''
-  },
-];
-
-const DEFAULT_PROMPTS = {
-  zukai: [
-    {
-      id: 'z1',
-      title: 'ビジネスモデル図解',
-      description: '中央に核心となる要素を置き、周囲に矢印でサイクルを描くビジネスフローチャート。',
-      prompt: 'flat vector illustration, infographic style, business ecosystem cycle, colorful arrows connecting icons, central hub concept, white background, minimalist, professional corporate colors, clean lines, high quality --ar 16:9',
-      imageUrl: ''
-    },
-    {
-      id: 'z2',
-      title: '比較マトリクス表',
-      description: '4象限のマトリクス図。対比構造を明確にするデザイン。',
-      prompt: '2x2 matrix chart infographic, comparison quadrant, distinct colored zones, clean typography, icons in each quadrant, isometric view, soft shadows, ui ux design style, gradient background --ar 4:3',
-      imageUrl: ''
-    }
-  ],
-  thumbnail: [
-    {
-      id: 't1',
-      title: '驚き顔のYouTuber風',
-      description: '画面の右側に人物、左側に大きな文字を入れるスペースがある配置。',
-      prompt: 'youtube thumbnail, shocked young japanese man pointing at empty space on the left, expressive face, vibrant yellow background, high contrast, studio lighting, 4k, hyper realistic, bold outline style --ar 16:9',
-      imageUrl: ''
-    }
-  ],
-  lp: [
-    {
-      id: 'l1',
-      title: 'SaaSヒーローセクション',
-      description: '信頼感のある青を基調とした、アプリのダッシュボードを表示するPC画面。',
-      prompt: 'web design landing page hero section, saas dashboard display on laptop mockup, floating ui elements, glassmorphism, isometric perspective, clean white and blue color palette, professional, minimalism, ux design masterpiece --ar 3:2',
-      imageUrl: ''
-    }
-  ],
-  icon: [
-    {
-      id: 'i1',
-      title: '3Dアプリアイコン',
-      description: 'プニプニした質感の3Dアイコン。',
-      prompt: '3d icon, cute robot head, glossy plastic material, clay render style, soft rounded edges, pastel colors, isometric view, plain background, high quality render, blender 3d style --ar 1:1',
-      imageUrl: ''
-    }
-  ],
-  photo: [
-    {
-      id: 'p1',
-      title: 'サイバーパンク・ポートレート',
-      description: 'ネオンライトに照らされた未来的な女性のポートレート。',
-      prompt: 'cinematic portrait of a cyberpunk woman, neon city background, rain reflections, futuristic visor, pink and blue lighting, shallow depth of field, bokeh, 8k, unreal engine 5 render style --ar 2:3',
-      imageUrl: ''
-    }
-  ],
-  background: [
-    {
-      id: 'b1',
-      title: '幾何学模様の壁紙',
-      description: 'プレゼン資料の背景に使える控えめなパターン。',
-      prompt: 'abstract geometric pattern background, subtle hexagonal shapes, white and light gray gradient, clean, corporate style, minimalist, seamless texture, 4k --ar 16:9',
-      imageUrl: ''
-    }
-  ]
-};
-
-// --- Icon Mapping ---
-const ICON_MAP = {
-  PieChart, ImageIcon, Monitor, Zap, Camera, Layers, Sparkles, Layout
-};
-
-const getIcon = (name) => ICON_MAP[name] || Layout;
-
-// --- Helper Functions ---
-const generateId = () => Math.random().toString(36).substr(2, 9);
-
-// --- Components ---
-
-const Toast = ({ message, onClose, type = 'success' }) => {
-  useEffect(() => {
-    const timer = setTimeout(onClose, 2500);
-    return () => clearTimeout(timer);
-  }, [onClose]);
-
-  const bgColor = type === 'error' ? 'bg-red-600' : 'bg-gray-900';
-  const Icon = type === 'error' ? AlertCircle : Check;
-
-  return (
-    <div className={`fixed bottom-6 left-1/2 transform -translate-x-1/2 ${bgColor} text-white px-6 py-3 rounded-full shadow-xl flex items-center space-x-2 animate-fade-in-up z-50 max-w-[90vw] whitespace-nowrap`}>
-      <Icon size={18} className="text-white" />
-      <span className="font-medium text-sm">{message}</span>
-    </div>
-  );
-};
-
-const ImageZoomModal = ({ src, onClose }) => {
-  if (!src) return null;
-  
-  return (
-    <div 
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/95 backdrop-blur-sm p-4 animate-fade-in"
-      onClick={onClose}
-    >
-      <button 
-        className="absolute top-4 right-4 p-3 text-white/70 hover:text-white rounded-full bg-white/10 hover:bg-white/20 transition-colors z-[70]"
-        onClick={onClose}
-      >
-        <X size={28} />
-      </button>
-      <img
-        src={src}
-        alt="Zoomed"
-        className="max-w-full max-h-full object-contain rounded-sm shadow-2xl transform transition-transform"
-        onClick={(e) => e.stopPropagation()}
-      />
-    </div>
-  );
-};
-
-const Header = ({ onHomeClick }) => (
-  <header className="bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-40 transition-all duration-300">
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-      <div 
-        className="flex items-center space-x-2 cursor-pointer hover:opacity-80 transition-opacity active:scale-95 transform duration-150"
-        onClick={onHomeClick}
-      >
-        <div className="w-9 h-9 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center text-white font-bold shadow-sm">
-          N
-        </div>
-        <h1 className="text-xl font-bold text-gray-800 tracking-tight">
-          Nanobanana
-        </h1>
-      </div>
-      <nav className="flex space-x-4">
-        <a 
-          href="https://github.com" 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors hidden sm:block"
-        >
-          GitHub
-        </a>
-      </nav>
-    </div>
-  </header>
-);
-
-const CategoryCard = ({ category, onClick, onDelete, onEdit }) => {
-  const Icon = getIcon(category.iconName);
-  
-  const handleDelete = (e) => {
-    e.stopPropagation(); 
-    if (window.confirm(`カテゴリー「${category.name}」を削除しますか？\n含まれるプロンプトもすべて削除されます。`)) {
-      onDelete(category.id);
-    }
-  };
-
-  const handleEdit = (e) => {
-    e.stopPropagation();
-    onEdit(category);
-  };
-
-  return (
-    <div 
-      onClick={() => onClick(category.id)}
-      className="group relative bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl hover:border-yellow-200 transition-all duration-300 cursor-pointer flex flex-col items-center text-center h-full active:scale-[0.98] overflow-hidden"
-    >
-      <div className="absolute top-3 right-3 flex space-x-1 z-20">
-        <button 
-          onClick={handleEdit}
-          className="p-2 bg-white/90 backdrop-blur-sm text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-full shadow-sm transition-all duration-200 border border-transparent hover:border-blue-100"
-          title="カテゴリーを編集"
-        >
-          <Edit2 size={16} />
-        </button>
-        <button 
-          onClick={handleDelete}
-          className="p-2 bg-white/90 backdrop-blur-sm text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full shadow-sm transition-all duration-200 border border-transparent hover:border-red-100"
-          title="カテゴリーを削除"
-        >
-          <Trash2 size={16} />
-        </button>
-      </div>
-
-      {category.imageUrl ? (
-        <div className="w-full h-32 relative mb-4 overflow-hidden">
-          <img 
-            src={category.imageUrl} 
-            alt={category.name}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-            onError={(e) => {
-              e.target.style.display = 'none';
-              e.target.parentElement.classList.add('bg-gray-100', 'flex', 'items-center', 'justify-center');
-            }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-white via-white/50 to-transparent" />
-          <div className={`absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 w-16 h-16 ${category.color} rounded-2xl flex items-center justify-center shadow-lg ring-4 ring-white`}>
-            <Icon className="text-white w-8 h-8" />
-          </div>
-        </div>
-      ) : (
-        <div className="w-full pt-8 pb-4 flex justify-center">
-           <div className={`w-16 h-16 ${category.color} bg-opacity-10 rounded-2xl flex items-center justify-center mb-0 group-hover:scale-110 transition-transform duration-300`}>
-            <Icon className={`w-8 h-8 ${category.color.replace('bg-', 'text-')}`} />
-          </div>
-        </div>
-      )}
-
-      <div className="p-6 pt-2 w-full">
-        {category.imageUrl && <div className="h-6"></div>}
-        <h3 className="text-lg font-bold text-gray-800 mb-2">{category.name}</h3>
-        <p className="text-sm text-gray-500 leading-relaxed line-clamp-2">{category.description}</p>
-      </div>
-    </div>
-  );
-};
-
-const PromptCard = ({ item, onCopy, onDelete, onImageClick }) => {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = () => {
-    onCopy(item.prompt);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleDelete = (e) => {
-    e.stopPropagation();
-    if (window.confirm('このプロンプトを削除しますか？')) {
-      onDelete(item.id);
-    }
-  };
-
-  const handleImageClick = (e) => {
-    e.stopPropagation();
-    if (item.imageUrl) {
-      onImageClick(item.imageUrl);
-    }
-  };
-
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col h-full group relative">
-      {/* Visual Placeholder or Image */}
-      <div 
-        className={`aspect-video bg-gray-100 relative group overflow-hidden ${item.imageUrl ? 'cursor-zoom-in' : ''}`}
-        onClick={handleImageClick}
-      >
-        {item.imageUrl ? (
-          <>
-            <img 
-              src={item.imageUrl} 
-              alt={item.title}
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-            />
-            {/* Zoom Hint Icon */}
-            <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/10 transition-colors duration-300 pointer-events-none">
-              <Maximize2 className="text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 drop-shadow-md" size={32} />
-            </div>
-          </>
-        ) : (
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 p-4">
-            <Sparkles className="w-8 h-8 mb-2 opacity-50" />
-            <span className="text-xs uppercase tracking-widest opacity-50 font-semibold">Preview</span>
-          </div>
-        )}
-
-        {/* Delete Button */}
-        <button 
-          onClick={handleDelete}
-          className="absolute top-2 right-2 p-2 bg-white/90 backdrop-blur text-gray-500 hover:text-red-500 hover:bg-white rounded-full shadow-md z-20 transition-all duration-200 border border-gray-100 hover:border-red-100"
-          title="削除"
-        >
-          <Trash2 size={16} />
-        </button>
-      </div>
-
-      <div className="p-5 flex-1 flex flex-col">
-        <h3 className="font-bold text-gray-800 text-lg leading-tight mb-2">{item.title}</h3>
-        <p className="text-xs text-gray-500 mb-4 line-clamp-2">{item.description}</p>
-        
-        <div className="mt-auto">
-          <div className="bg-gray-50 rounded-lg p-3 mb-3 border border-gray-100 group/code relative">
-            <code className="text-xs text-gray-600 font-mono block line-clamp-3 leading-relaxed break-all">
-              {item.prompt}
-            </code>
-          </div>
-          
-          <button 
-            onClick={handleCopy}
-            className={`w-full flex items-center justify-center space-x-2 py-3 rounded-xl text-sm font-bold transition-all duration-200 active:scale-95 ${
-              copied 
-                ? 'bg-green-500 text-white shadow-green-200' 
-                : 'bg-gray-900 text-white hover:bg-gray-800 shadow-lg shadow-gray-200 hover:shadow-gray-300'
-            }`}
-          >
-            {copied ? (
-              <>
-                <Check size={16} />
-                <span>コピー完了!</span>
-              </>
-            ) : (
-              <>
-                <Copy size={16} />
-                <span>コピー</span>
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// --- Modal Components ---
-
-const Modal = ({ isOpen, onClose, title, children }) => {
-  if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] animate-fade-in-up">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-white sticky top-0 z-10">
-          <h3 className="text-lg font-bold text-gray-900">{title}</h3>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500">
-            <X size={20} />
-          </button>
-        </div>
-        <div className="p-6 overflow-y-auto">
-          {children}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// 共通化されたカテゴリーフォーム
-const CategoryForm = ({ onSubmit, onClose, initialData = null }) => {
-  const [name, setName] = useState(initialData?.name || '');
-  const [description, setDescription] = useState(initialData?.description || '');
-  const [imageUrl, setImageUrl] = useState(initialData?.imageUrl || '');
-  const [color, setColor] = useState(initialData?.color || 'bg-blue-500');
-
-  const colors = [
-    'bg-blue-500', 'bg-red-500', 'bg-purple-500', 
-    'bg-yellow-500', 'bg-green-500', 'bg-pink-500', 
-    'bg-indigo-500', 'bg-gray-500'
-  ];
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!name.trim()) return;
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nanobanana Prompt Gallery</title>
     
-    // idは新規作成時のみ生成、更新時は既存のものを維持するため呼び出し元で処理
-    onSubmit({ 
-      id: initialData?.id, 
-      name, 
-      description, 
-      color, 
-      imageUrl, 
-      iconName: initialData?.iconName || 'Layout' 
-    });
-    onClose();
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">カテゴリー名 <span className="text-red-500">*</span></label>
-        <input 
-          autoFocus
-          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none transition-all"
-          placeholder="例: 背景画像"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">画像URL（任意）</label>
-        <div className="relative">
-          <input 
-            className="w-full px-4 py-3 pl-10 rounded-xl border border-gray-200 focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none transition-all"
-            placeholder="https://example.com/image.jpg"
-            value={imageUrl}
-            onChange={(e) => setImageUrl(e.target.value)}
-          />
-          <LinkIcon size={18} className="absolute left-3 top-3.5 text-gray-400" />
-        </div>
-        <p className="text-xs text-gray-500 mt-1">カテゴリーカードに表示する画像URL。空の場合はアイコンが表示されます。</p>
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">説明</label>
-        <textarea 
-          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none transition-all"
-          placeholder="簡単な説明を入力..."
-          rows={3}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">テーマカラー</label>
-        <div className="flex flex-wrap gap-3">
-          {colors.map((c) => (
-            <button
-              key={c}
-              type="button"
-              className={`w-10 h-10 rounded-full ${c} transition-transform hover:scale-110 ${color === c ? 'ring-4 ring-offset-2 ring-gray-200 scale-110' : ''}`}
-              onClick={() => setColor(c)}
-            />
-          ))}
-        </div>
-      </div>
-      <div className="pt-4">
-        <button type="submit" className="w-full bg-gray-900 text-white font-bold py-3.5 rounded-xl hover:bg-gray-800 active:scale-95 transition-all shadow-lg">
-          {initialData ? 'カテゴリーを更新' : 'カテゴリーを作成'}
-        </button>
-      </div>
-    </form>
-  );
-};
-
-const AddPromptForm = ({ onSubmit, onClose }) => {
-  const [title, setTitle] = useState('');
-  const [prompt, setPrompt] = useState('');
-  const [description, setDescription] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
-  
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!title.trim() || !prompt.trim()) return;
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
     
-    onSubmit({ title, prompt, description, imageUrl });
-    onClose();
-  };
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel (JSX Transpiler) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">タイトル <span className="text-red-500">*</span></label>
-        <input 
-          autoFocus
-          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none transition-all"
-          placeholder="例: 夕日のサイバーパンク都市"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          required
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">画像URL（任意）</label>
-        <div className="relative">
-          <input 
-            className="w-full px-4 py-3 pl-10 rounded-xl border border-gray-200 focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none transition-all"
-            placeholder="https://example.com/generated-image.jpg"
-            value={imageUrl}
-            onChange={(e) => setImageUrl(e.target.value)}
-          />
-          <LinkIcon size={18} className="absolute left-3 top-3.5 text-gray-400" />
-        </div>
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">プロンプト <span className="text-red-500">*</span></label>
-        <textarea 
-          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none transition-all font-mono text-sm bg-gray-50"
-          placeholder="nanobananaのプロンプトを入力..."
-          rows={3}
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          required
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">説明（任意）</label>
-        <input 
-          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none transition-all"
-          placeholder="どんな画像が生成されるか..."
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-      </div>
-      <div className="pt-4">
-        <button type="submit" className="w-full bg-gray-900 text-white font-bold py-3.5 rounded-xl hover:bg-gray-800 active:scale-95 transition-all shadow-lg">
-          プロンプトを追加
-        </button>
-      </div>
-    </form>
-  );
-};
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 
-const Fab = ({ onClick, icon: Icon, label }) => (
-  <button 
-    onClick={onClick}
-    className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-full shadow-xl hover:shadow-2xl hover:scale-105 active:scale-90 transition-all duration-300 flex items-center justify-center z-30"
-    aria-label={label}
-  >
-    <Icon size={28} />
-  </button>
-);
-
-// --- Main Application ---
-
-export default function App() {
-  const [categories, setCategories] = useState([]);
-  const [promptsData, setPromptsData] = useState({});
-  const [activeCategory, setActiveCategory] = useState(null);
-  const [toast, setToast] = useState(null); // { message, type }
-  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
-  const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
-  const [zoomedImage, setZoomedImage] = useState(null); 
-  const [editingCategory, setEditingCategory] = useState(null); // 編集中のカテゴリー
-
-  // Load Data from LocalStorage
-  useEffect(() => {
-    const savedCategories = localStorage.getItem('nanobanana_categories');
-    const savedPrompts = localStorage.getItem('nanobanana_prompts');
-
-    if (savedCategories) {
-      setCategories(JSON.parse(savedCategories));
-    } else {
-      setCategories(DEFAULT_CATEGORIES);
-    }
-
-    if (savedPrompts) {
-      setPromptsData(JSON.parse(savedPrompts));
-    } else {
-      setPromptsData(DEFAULT_PROMPTS);
-    }
-  }, []);
-
-  // Save Data on Change
-  useEffect(() => {
-    if (categories.length > 0) {
-      localStorage.setItem('nanobanana_categories', JSON.stringify(categories));
-    }
-    if (Object.keys(promptsData).length > 0) {
-      localStorage.setItem('nanobanana_prompts', JSON.stringify(promptsData));
-    }
-  }, [categories, promptsData]);
-
-  const showToast = (message, type = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
-  };
-
-  const handleCopyPrompt = (text) => {
-    const textArea = document.createElement("textarea");
-    textArea.value = text;
-    document.body.appendChild(textArea);
-    textArea.select();
-    try {
-      document.execCommand('copy');
-      showToast("プロンプトをコピーしました！");
-    } catch (err) {
-      showToast("コピーに失敗しました", "error");
-    }
-    document.body.removeChild(textArea);
-  };
-
-  const handleAddCategory = (categoryData) => {
-    const newCategory = { ...categoryData, id: generateId() };
-    setCategories(prev => [...prev, newCategory]); 
-    setPromptsData(prev => ({ ...prev, [newCategory.id]: [] }));
-    showToast(`「${newCategory.name}」を作成しました`);
-  };
-
-  const handleUpdateCategory = (updatedData) => {
-    setCategories(prev => prev.map(c => 
-      c.id === updatedData.id ? { ...c, ...updatedData } : c
-    ));
-    showToast("カテゴリーを更新しました");
-  };
-
-  const handleDeleteCategory = (categoryId) => {
-    setCategories(prev => prev.filter(c => c.id !== categoryId)); 
-    setPromptsData(prev => {
-      const newData = { ...prev };
-      delete newData[categoryId];
-      return newData;
-    });
-    showToast("カテゴリーを削除しました");
-  };
-
-  const openEditCategoryModal = (category) => {
-    setEditingCategory(category);
-    setIsCategoryModalOpen(true);
-  };
-
-  const openAddCategoryModal = () => {
-    setEditingCategory(null);
-    setIsCategoryModalOpen(true);
-  };
-
-  const handleAddPrompt = (newPromptData) => {
-    const newPrompt = { ...newPromptData, id: generateId() };
-    setPromptsData(prev => {
-      const categoryPrompts = prev[activeCategory] || [];
-      return {
-        ...prev,
-        [activeCategory]: [newPrompt, ...categoryPrompts] 
-      };
-    });
-    showToast("プロンプトを追加しました");
-  };
-
-  const handleDeletePrompt = (promptId) => {
-    setPromptsData(prev => {
-      const categoryPrompts = prev[activeCategory] || [];
-      return {
-        ...prev,
-        [activeCategory]: categoryPrompts.filter(p => p.id !== promptId)
-      };
-    });
-    showToast("プロンプトを削除しました");
-  };
-
-  const activeCategoryData = activeCategory 
-    ? categories.find(c => c.id === activeCategory)
-    : null;
-
-  return (
-    <div className="min-h-screen bg-gray-50 font-sans text-gray-900 selection:bg-yellow-200 selection:text-yellow-900 pb-20">
-      <Header onHomeClick={() => setActiveCategory(null)} />
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+            background-color: #f9fafb;
+        }
         
-        {/* Breadcrumb / Back Navigation */}
-        {activeCategory && (
-          <div className="mb-6 animate-fade-in">
-            <button 
-              onClick={() => setActiveCategory(null)}
-              className="group flex items-center text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors bg-white px-4 py-2 rounded-full shadow-sm border border-gray-100 hover:shadow-md"
-            >
-              <ArrowLeft size={16} className="mr-2 group-hover:-translate-x-1 transition-transform" />
-              一覧に戻る
-            </button>
-          </div>
-        )}
+        /* Custom Scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
 
-        {/* --- Home View: Categories --- */}
-        {!activeCategory && (
-          <div className="space-y-12 animate-fade-in">
-            <div className="text-center max-w-2xl mx-auto mt-4 sm:mt-8">
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-4 tracking-tight leading-tight">
-                作りたい画像を、<br/>
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-500 to-orange-600">
-                  一瞬で見つけよう。
-                </span>
-              </h2>
-              <p className="text-base sm:text-lg text-gray-500 px-4">
-                Nanobanana専用のプロンプトギャラリー。<br className="hidden sm:block"/>
-                あなただけのコレクションを作成・管理できます。
-              </p>
-              
-              <div className="mt-8 relative max-w-lg mx-auto px-4 sm:px-0">
-                <div className="absolute inset-y-0 left-4 sm:left-3 pl-3 flex items-center pointer-events-none">
-                  <Search className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  type="text"
-                  className="block w-full pl-12 pr-4 py-4 border border-gray-200 rounded-full leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent shadow-sm transition-shadow hover:shadow-md"
-                  placeholder="キーワード検索..."
-                />
-              </div>
-            </div>
-
-            <div className="px-2 sm:px-0">
-              <div className="flex items-center justify-between mb-6 px-2">
-                <h3 className="text-xl font-bold text-gray-800 flex items-center">
-                  <Layout className="mr-2 text-yellow-500" size={20}/>
-                  カテゴリー
-                </h3>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                {categories.map(category => (
-                  <CategoryCard 
-                    key={category.id} 
-                    category={category} 
-                    onClick={setActiveCategory} 
-                    onDelete={handleDeleteCategory}
-                    onEdit={openEditCategoryModal}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* FAB for Adding Category */}
-            <Fab onClick={openAddCategoryModal} icon={Plus} label="カテゴリーを追加" />
-          </div>
-        )}
-
-        {/* --- Detail View: Prompts --- */}
-        {activeCategory && activeCategoryData && (
-          <div className="animate-fade-in pb-16">
-            <div className="bg-white rounded-3xl p-6 sm:p-8 mb-8 border border-gray-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex items-center">
-                <div className={`w-14 h-14 sm:w-16 sm:h-16 ${activeCategoryData.color} rounded-2xl flex items-center justify-center text-white mr-5 shadow-lg flex-shrink-0 overflow-hidden`}>
-                  {activeCategoryData.imageUrl ? (
-                     <img src={activeCategoryData.imageUrl} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    React.createElement(getIcon(activeCategoryData.iconName), { size: 28 })
-                  )}
-                </div>
-                <div>
-                  <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">{activeCategoryData.name}</h2>
-                  <p className="text-gray-500 mt-1 text-sm sm:text-base">{activeCategoryData.description}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                 <div className="text-sm font-medium text-gray-400 bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
-                    {promptsData[activeCategory]?.length || 0} プロンプト
-                 </div>
-              </div>
-            </div>
-
-            {promptsData[activeCategory]?.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {promptsData[activeCategory].map(item => (
-                  <PromptCard 
-                    key={item.id} 
-                    item={item} 
-                    onCopy={handleCopyPrompt} 
-                    onDelete={handleDeletePrompt}
-                    onImageClick={setZoomedImage}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-24 bg-white rounded-3xl border border-dashed border-gray-200">
-                <div className="mx-auto w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
-                  <Sparkles className="text-gray-300" size={32}/>
-                </div>
-                <h3 className="text-lg font-bold text-gray-900">まだプロンプトがありません</h3>
-                <p className="text-gray-500 mt-2 text-sm">右下のボタンから最初のプロンプトを追加しましょう！</p>
-              </div>
-            )}
-
-            {/* FAB for Adding Prompt */}
-            <Fab onClick={() => setIsPromptModalOpen(true)} icon={Plus} label="プロンプトを追加" />
-          </div>
-        )}
-
-      </main>
-
-      {/* Modals */}
-      <Modal 
-        isOpen={isCategoryModalOpen} 
-        onClose={() => setIsCategoryModalOpen(false)} 
-        title={editingCategory ? "カテゴリーを編集" : "新しいカテゴリーを追加"}
-      >
-        <CategoryForm 
-          initialData={editingCategory}
-          onSubmit={editingCategory ? handleUpdateCategory : handleAddCategory} 
-          onClose={() => setIsCategoryModalOpen(false)} 
-        />
-      </Modal>
-
-      <Modal 
-        isOpen={isPromptModalOpen} 
-        onClose={() => setIsPromptModalOpen(false)} 
-        title="プロンプトを追加"
-      >
-        <AddPromptForm 
-          onSubmit={handleAddPrompt} 
-          onClose={() => setIsPromptModalOpen(false)} 
-        />
-      </Modal>
-
-      {/* Image Zoom Modal */}
-      {zoomedImage && (
-        <ImageZoomModal 
-          src={zoomedImage} 
-          onClose={() => setZoomedImage(null)} 
-        />
-      )}
-
-      {/* Toast Notification */}
-      {toast && (
-        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
-      )}
-      
-      <style>{`
         @keyframes fadeInUp {
-          from { opacity: 0; transform: translate3d(0, 20px, 0); }
-          to { opacity: 1; transform: translate3d(0, 0, 0); }
+            from { opacity: 0; transform: translate3d(0, 20px, 0); }
+            to { opacity: 1; transform: translate3d(0, 0, 0); }
         }
         .animate-fade-in {
-          animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
         .animate-fade-in-up {
-          animation: fadeInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            animation: fadeInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
-      `}</style>
-    </div>
-  );
-}
+        
+        /* Utility for aspect ratio if needed */
+        .aspect-video {
+            aspect-ratio: 16 / 9;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- Icons (SVG Definitions replacing lucide-react) ---
+        const IconBase = ({ children, size = 24, className = "", ...props }) => (
+            <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                width={size} 
+                height={size} 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                className={className} 
+                {...props}
+            >
+                {children}
+            </svg>
+        );
+
+        const Copy = (props) => <IconBase {...props}><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></IconBase>;
+        const Check = (props) => <IconBase {...props}><polyline points="20 6 9 17 4 12"/></IconBase>;
+        const Layout = (props) => <IconBase {...props}><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><line x1="3" x2="21" y1="9" y2="9"/><line x1="9" x2="9" y1="21" y2="9"/></IconBase>;
+        const ImageIcon = (props) => <IconBase {...props}><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></IconBase>;
+        const PieChart = (props) => <IconBase {...props}><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></IconBase>;
+        const Monitor = (props) => <IconBase {...props}><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></IconBase>;
+        const ArrowLeft = (props) => <IconBase {...props}><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></IconBase>;
+        const Search = (props) => <IconBase {...props}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></IconBase>;
+        const Zap = (props) => <IconBase {...props}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></IconBase>;
+        const Camera = (props) => <IconBase {...props}><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></IconBase>;
+        const Layers = (props) => <IconBase {...props}><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></IconBase>;
+        const Sparkles = (props) => <IconBase {...props}><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M9 3v4"/><path d="M3 5h4"/><path d="M3 9h4"/></IconBase>;
+        const Plus = (props) => <IconBase {...props}><path d="M5 12h14"/><path d="M12 5v14"/></IconBase>;
+        const Trash2 = (props) => <IconBase {...props}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></IconBase>;
+        const X = (props) => <IconBase {...props}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></IconBase>;
+        const AlertCircle = (props) => <IconBase {...props}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></IconBase>;
+        const LinkIcon = (props) => <IconBase {...props}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></IconBase>;
+        const Maximize2 = (props) => <IconBase {...props}><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" x2="14" y1="3" y2="10"/><line x1="3" x2="10" y1="21" y2="14"/></IconBase>;
+        const Edit2 = (props) => <IconBase {...props}><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></IconBase>;
+
+        // --- Initial Data (Defaults) ---
+        const DEFAULT_CATEGORIES = [
+            { 
+                id: 'zukai', 
+                name: '図解・インフォグラフィック', 
+                description: '複雑な概念を可視化する図解スタイル', 
+                iconName: 'PieChart', 
+                color: 'bg-blue-500',
+                imageUrl: '' 
+            },
+            { 
+                id: 'thumbnail', 
+                name: 'YouTubeサムネイル', 
+                description: 'クリック率を高めるインパクトのある構図', 
+                iconName: 'ImageIcon', 
+                color: 'bg-red-500',
+                imageUrl: ''
+            },
+            { 
+                id: 'lp', 
+                name: 'LP・Webデザイン', 
+                description: 'ランディングページのセクションやUI', 
+                iconName: 'Monitor', 
+                color: 'bg-purple-500',
+                imageUrl: ''
+            },
+            { 
+                id: 'icon', 
+                name: 'アプリアイコン・ロゴ', 
+                description: 'シンプルで視認性の高いアイコン', 
+                iconName: 'Zap', 
+                color: 'bg-yellow-500',
+                imageUrl: ''
+            },
+            { 
+                id: 'photo', 
+                name: 'リアル写真・ポートレート', 
+                description: '高精細な実写風フォトグラフィー', 
+                iconName: 'Camera', 
+                color: 'bg-green-500',
+                imageUrl: ''
+            },
+            { 
+                id: 'background', 
+                name: '背景・テクスチャ', 
+                description: 'スライドや壁紙に使える素材', 
+                iconName: 'Layers', 
+                color: 'bg-gray-500',
+                imageUrl: ''
+            },
+        ];
+
+        const DEFAULT_PROMPTS = {
+            zukai: [
+                {
+                    id: 'z1',
+                    title: 'ビジネスモデル図解',
+                    description: '中央に核心となる要素を置き、周囲に矢印でサイクルを描くビジネスフローチャート。',
+                    prompt: 'flat vector illustration, infographic style, business ecosystem cycle, colorful arrows connecting icons, central hub concept, white background, minimalist, professional corporate colors, clean lines, high quality --ar 16:9',
+                    imageUrl: ''
+                },
+                {
+                    id: 'z2',
+                    title: '比較マトリクス表',
+                    description: '4象限のマトリクス図。対比構造を明確にするデザイン。',
+                    prompt: '2x2 matrix chart infographic, comparison quadrant, distinct colored zones, clean typography, icons in each quadrant, isometric view, soft shadows, ui ux design style, gradient background --ar 4:3',
+                    imageUrl: ''
+                }
+            ],
+            thumbnail: [
+                {
+                    id: 't1',
+                    title: '驚き顔のYouTuber風',
+                    description: '画面の右側に人物、左側に大きな文字を入れるスペースがある配置。',
+                    prompt: 'youtube thumbnail, shocked young japanese man pointing at empty space on the left, expressive face, vibrant yellow background, high contrast, studio lighting, 4k, hyper realistic, bold outline style --ar 16:9',
+                    imageUrl: ''
+                }
+            ],
+            lp: [
+                {
+                    id: 'l1',
+                    title: 'SaaSヒーローセクション',
+                    description: '信頼感のある青を基調とした、アプリのダッシュボードを表示するPC画面。',
+                    prompt: 'web design landing page hero section, saas dashboard display on laptop mockup, floating ui elements, glassmorphism, isometric perspective, clean white and blue color palette, professional, minimalism, ux design masterpiece --ar 3:2',
+                    imageUrl: ''
+                }
+            ],
+            icon: [
+                {
+                    id: 'i1',
+                    title: '3Dアプリアイコン',
+                    description: 'プニプニした質感の3Dアイコン。',
+                    prompt: '3d icon, cute robot head, glossy plastic material, clay render style, soft rounded edges, pastel colors, isometric view, plain background, high quality render, blender 3d style --ar 1:1',
+                    imageUrl: ''
+                }
+            ],
+            photo: [
+                {
+                    id: 'p1',
+                    title: 'サイバーパンク・ポートレート',
+                    description: 'ネオンライトに照らされた未来的な女性のポートレート。',
+                    prompt: 'cinematic portrait of a cyberpunk woman, neon city background, rain reflections, futuristic visor, pink and blue lighting, shallow depth of field, bokeh, 8k, unreal engine 5 render style --ar 2:3',
+                    imageUrl: ''
+                }
+            ],
+            background: [
+                {
+                    id: 'b1',
+                    title: '幾何学模様の壁紙',
+                    description: 'プレゼン資料の背景に使える控えめなパターン。',
+                    prompt: 'abstract geometric pattern background, subtle hexagonal shapes, white and light gray gradient, clean, corporate style, minimalist, seamless texture, 4k --ar 16:9',
+                    imageUrl: ''
+                }
+            ]
+        };
+
+        // --- Icon Mapping ---
+        const ICON_MAP = {
+            PieChart, ImageIcon, Monitor, Zap, Camera, Layers, Sparkles, Layout
+        };
+
+        const getIcon = (name) => ICON_MAP[name] || Layout;
+
+        // --- Helper Functions ---
+        const generateId = () => Math.random().toString(36).substr(2, 9);
+
+        // --- Components ---
+
+        const Toast = ({ message, onClose, type = 'success' }) => {
+            useEffect(() => {
+                const timer = setTimeout(onClose, 2500);
+                return () => clearTimeout(timer);
+            }, [onClose]);
+
+            const bgColor = type === 'error' ? 'bg-red-600' : 'bg-gray-900';
+            const Icon = type === 'error' ? AlertCircle : Check;
+
+            return (
+                <div className={`fixed bottom-6 left-1/2 transform -translate-x-1/2 ${bgColor} text-white px-6 py-3 rounded-full shadow-xl flex items-center space-x-2 animate-fade-in-up z-50 max-w-[90vw] whitespace-nowrap`}>
+                    <Icon size={18} className="text-white" />
+                    <span className="font-medium text-sm">{message}</span>
+                </div>
+            );
+        };
+
+        const ImageZoomModal = ({ src, onClose }) => {
+            if (!src) return null;
+            
+            return (
+                <div 
+                    className="fixed inset-0 z-[60] flex items-center justify-center bg-black/95 backdrop-blur-sm p-4 animate-fade-in"
+                    onClick={onClose}
+                >
+                    <button 
+                        className="absolute top-4 right-4 p-3 text-white/70 hover:text-white rounded-full bg-white/10 hover:bg-white/20 transition-colors z-[70]"
+                        onClick={onClose}
+                    >
+                        <X size={28} />
+                    </button>
+                    <img
+                        src={src}
+                        alt="Zoomed"
+                        className="max-w-full max-h-full object-contain rounded-sm shadow-2xl transform transition-transform"
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                </div>
+            );
+        };
+
+        const Header = ({ onHomeClick }) => (
+            <header className="bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-40 transition-all duration-300">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                    <div 
+                        className="flex items-center space-x-2 cursor-pointer hover:opacity-80 transition-opacity active:scale-95 transform duration-150"
+                        onClick={onHomeClick}
+                    >
+                        <div className="w-9 h-9 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center text-white font-bold shadow-sm">
+                            N
+                        </div>
+                        <h1 className="text-xl font-bold text-gray-800 tracking-tight">
+                            Nanobanana
+                        </h1>
+                    </div>
+                </div>
+            </header>
+        );
+
+        const CategoryCard = ({ category, onClick, onDelete, onEdit }) => {
+            const Icon = getIcon(category.iconName);
+            
+            const handleDelete = (e) => {
+                e.stopPropagation(); 
+                if (window.confirm(`カテゴリー「${category.name}」を削除しますか？\n含まれるプロンプトもすべて削除されます。`)) {
+                    onDelete(category.id);
+                }
+            };
+
+            const handleEdit = (e) => {
+                e.stopPropagation();
+                onEdit(category);
+            };
+
+            return (
+                <div 
+                    onClick={() => onClick(category.id)}
+                    className="group relative bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl hover:border-yellow-200 transition-all duration-300 cursor-pointer flex flex-col items-center text-center h-full active:scale-[0.98] overflow-hidden"
+                >
+                    <div className="absolute top-3 right-3 flex space-x-1 z-20">
+                        <button 
+                            onClick={handleEdit}
+                            className="p-2 bg-white/90 backdrop-blur-sm text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-full shadow-sm transition-all duration-200 border border-transparent hover:border-blue-100"
+                            title="カテゴリーを編集"
+                        >
+                            <Edit2 size={16} />
+                        </button>
+                        <button 
+                            onClick={handleDelete}
+                            className="p-2 bg-white/90 backdrop-blur-sm text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full shadow-sm transition-all duration-200 border border-transparent hover:border-red-100"
+                            title="カテゴリーを削除"
+                        >
+                            <Trash2 size={16} />
+                        </button>
+                    </div>
+
+                    {category.imageUrl ? (
+                        <div className="w-full h-32 relative mb-4 overflow-hidden">
+                            <img 
+                                src={category.imageUrl} 
+                                alt={category.name}
+                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                onError={(e) => {
+                                    e.target.style.display = 'none';
+                                    e.target.parentElement.classList.add('bg-gray-100', 'flex', 'items-center', 'justify-center');
+                                }}
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-white via-white/50 to-transparent" />
+                            <div className={`absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 w-16 h-16 ${category.color} rounded-2xl flex items-center justify-center shadow-lg ring-4 ring-white`}>
+                                <Icon className="text-white w-8 h-8" />
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="w-full pt-8 pb-4 flex justify-center">
+                            <div className={`w-16 h-16 ${category.color} bg-opacity-10 rounded-2xl flex items-center justify-center mb-0 group-hover:scale-110 transition-transform duration-300`}>
+                                <Icon className={`w-8 h-8 ${category.color.replace('bg-', 'text-')}`} />
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="p-6 pt-2 w-full">
+                        {category.imageUrl && <div className="h-6"></div>}
+                        <h3 className="text-lg font-bold text-gray-800 mb-2">{category.name}</h3>
+                        <p className="text-sm text-gray-500 leading-relaxed line-clamp-2">{category.description}</p>
+                    </div>
+                </div>
+            );
+        };
+
+        const PromptCard = ({ item, onCopy, onDelete, onImageClick }) => {
+            const [copied, setCopied] = useState(false);
+
+            const handleCopy = () => {
+                onCopy(item.prompt);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+            };
+
+            const handleDelete = (e) => {
+                e.stopPropagation();
+                if (window.confirm('このプロンプトを削除しますか？')) {
+                    onDelete(item.id);
+                }
+            };
+
+            const handleImageClick = (e) => {
+                e.stopPropagation();
+                if (item.imageUrl) {
+                    onImageClick(item.imageUrl);
+                }
+            };
+
+            return (
+                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col h-full group relative">
+                    {/* Visual Placeholder or Image */}
+                    <div 
+                        className={`aspect-video bg-gray-100 relative group overflow-hidden ${item.imageUrl ? 'cursor-zoom-in' : ''}`}
+                        onClick={handleImageClick}
+                    >
+                        {item.imageUrl ? (
+                            <React.Fragment>
+                                <img 
+                                    src={item.imageUrl} 
+                                    alt={item.title}
+                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                />
+                                {/* Zoom Hint Icon */}
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/10 transition-colors duration-300 pointer-events-none">
+                                    <Maximize2 className="text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 drop-shadow-md" size={32} />
+                                </div>
+                            </React.Fragment>
+                        ) : (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 p-4">
+                                <Sparkles className="w-8 h-8 mb-2 opacity-50" />
+                                <span className="text-xs uppercase tracking-widest opacity-50 font-semibold">Preview</span>
+                            </div>
+                        )}
+
+                        {/* Delete Button */}
+                        <button 
+                            onClick={handleDelete}
+                            className="absolute top-2 right-2 p-2 bg-white/90 backdrop-blur text-gray-500 hover:text-red-500 hover:bg-white rounded-full shadow-md z-20 transition-all duration-200 border border-gray-100 hover:border-red-100"
+                            title="削除"
+                        >
+                            <Trash2 size={16} />
+                        </button>
+                    </div>
+
+                    <div className="p-5 flex-1 flex flex-col">
+                        <h3 className="font-bold text-gray-800 text-lg leading-tight mb-2">{item.title}</h3>
+                        <p className="text-xs text-gray-500 mb-4 line-clamp-2">{item.description}</p>
+                        
+                        <div className="mt-auto">
+                            <div className="bg-gray-50 rounded-lg p-3 mb-3 border border-gray-100 group/code relative">
+                                <code className="text-xs text-gray-600 font-mono block line-clamp-3 leading-relaxed break-all">
+                                    {item.prompt}
+                                </code>
+                            </div>
+                            
+                            <button 
+                                onClick={handleCopy}
+                                className={`w-full flex items-center justify-center space-x-2 py-3 rounded-xl text-sm font-bold transition-all duration-200 active:scale-95 ${
+                                    copied 
+                                        ? 'bg-green-500 text-white shadow-green-200' 
+                                        : 'bg-gray-900 text-white hover:bg-gray-800 shadow-lg shadow-gray-200 hover:shadow-gray-300'
+                                }`}
+                            >
+                                {copied ? (
+                                    <React.Fragment>
+                                        <Check size={16} />
+                                        <span>コピー完了!</span>
+                                    </React.Fragment>
+                                ) : (
+                                    <React.Fragment>
+                                        <Copy size={16} />
+                                        <span>コピー</span>
+                                    </React.Fragment>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const Modal = ({ isOpen, onClose, title, children }) => {
+            if (!isOpen) return null;
+            return (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" onClick={onClose} />
+                    <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] animate-fade-in-up">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-white sticky top-0 z-10">
+                            <h3 className="text-lg font-bold text-gray-900">{title}</h3>
+                            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="p-6 overflow-y-auto">
+                            {children}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const CategoryForm = ({ onSubmit, onClose, initialData = null }) => {
+            const [name, setName] = useState(initialData?.name || '');
+            const [description, setDescription] = useState(initialData?.description || '');
+            const [imageUrl, setImageUrl] = useState(initialData?.imageUrl || '');
+            const [color, setColor] = useState(initialData?.color || 'bg-blue-500');
+
+            const colors = [
+                'bg-blue-500', 'bg-red-500', 'bg-purple-500', 
+                'bg-yellow-500', 'bg-green-500', 'bg-pink-500', 
+                'bg-indigo-500', 'bg-gray-500'
+            ];
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (!name.trim()) return;
+                
+                onSubmit({ 
+                    id: initialData?.id, 
+                    name, 
+                    description, 
+                    color, 
+                    imageUrl, 
+                    iconName: initialData?.iconName || 'Layout' 
+                });
+                onClose();
+            };
+
+            return (
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">カテゴリー名 <span className="text-red-500">*</span></label>
+                        <input 
+                            autoFocus
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none transition-all"
+                            placeholder="例: 背景画像"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">画像URL（任意）</label>
+                        <div className="relative">
+                            <input 
+                                className="w-full px-4 py-3 pl-10 rounded-xl border border-gray-200 focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none transition-all"
+                                placeholder="https://example.com/image.jpg"
+                                value={imageUrl}
+                                onChange={(e) => setImageUrl(e.target.value)}
+                            />
+                            <LinkIcon size={18} className="absolute left-3 top-3.5 text-gray-400" />
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">カテゴリーカードに表示する画像URL。空の場合はアイコンが表示されます。</p>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">説明</label>
+                        <textarea 
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none transition-all"
+                            placeholder="簡単な説明を入力..."
+                            rows={3}
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">テーマカラー</label>
+                        <div className="flex flex-wrap gap-3">
+                            {colors.map((c) => (
+                                <button
+                                    key={c}
+                                    type="button"
+                                    className={`w-10 h-10 rounded-full ${c} transition-transform hover:scale-110 ${color === c ? 'ring-4 ring-offset-2 ring-gray-200 scale-110' : ''}`}
+                                    onClick={() => setColor(c)}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                    <div className="pt-4">
+                        <button type="submit" className="w-full bg-gray-900 text-white font-bold py-3.5 rounded-xl hover:bg-gray-800 active:scale-95 transition-all shadow-lg">
+                            {initialData ? 'カテゴリーを更新' : 'カテゴリーを作成'}
+                        </button>
+                    </div>
+                </form>
+            );
+        };
+
+        const AddPromptForm = ({ onSubmit, onClose }) => {
+            const [title, setTitle] = useState('');
+            const [prompt, setPrompt] = useState('');
+            const [description, setDescription] = useState('');
+            const [imageUrl, setImageUrl] = useState('');
+            
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (!title.trim() || !prompt.trim()) return;
+                
+                onSubmit({ title, prompt, description, imageUrl });
+                onClose();
+            };
+
+            return (
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">タイトル <span className="text-red-500">*</span></label>
+                        <input 
+                            autoFocus
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none transition-all"
+                            placeholder="例: 夕日のサイバーパンク都市"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">画像URL（任意）</label>
+                        <div className="relative">
+                            <input 
+                                className="w-full px-4 py-3 pl-10 rounded-xl border border-gray-200 focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none transition-all"
+                                placeholder="https://example.com/generated-image.jpg"
+                                value={imageUrl}
+                                onChange={(e) => setImageUrl(e.target.value)}
+                            />
+                            <LinkIcon size={18} className="absolute left-3 top-3.5 text-gray-400" />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">プロンプト <span className="text-red-500">*</span></label>
+                        <textarea 
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none transition-all font-mono text-sm bg-gray-50"
+                            placeholder="nanobananaのプロンプトを入力..."
+                            rows={3}
+                            value={prompt}
+                            onChange={(e) => setPrompt(e.target.value)}
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">説明（任意）</label>
+                        <input 
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none transition-all"
+                            placeholder="どんな画像が生成されるか..."
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                        />
+                    </div>
+                    <div className="pt-4">
+                        <button type="submit" className="w-full bg-gray-900 text-white font-bold py-3.5 rounded-xl hover:bg-gray-800 active:scale-95 transition-all shadow-lg">
+                            プロンプトを追加
+                        </button>
+                    </div>
+                </form>
+            );
+        };
+
+        const Fab = ({ onClick, icon: Icon, label }) => (
+            <button 
+                onClick={onClick}
+                className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-full shadow-xl hover:shadow-2xl hover:scale-105 active:scale-90 transition-all duration-300 flex items-center justify-center z-30"
+                aria-label={label}
+            >
+                <Icon size={28} />
+            </button>
+        );
+
+        const App = () => {
+            const [categories, setCategories] = useState([]);
+            const [promptsData, setPromptsData] = useState({});
+            const [activeCategory, setActiveCategory] = useState(null);
+            const [toast, setToast] = useState(null); // { message, type }
+            const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+            const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
+            const [zoomedImage, setZoomedImage] = useState(null); 
+            const [editingCategory, setEditingCategory] = useState(null); // 編集中のカテゴリー
+
+            // Load Data from LocalStorage
+            useEffect(() => {
+                const savedCategories = localStorage.getItem('nanobanana_categories');
+                const savedPrompts = localStorage.getItem('nanobanana_prompts');
+
+                if (savedCategories) {
+                    setCategories(JSON.parse(savedCategories));
+                } else {
+                    setCategories(DEFAULT_CATEGORIES);
+                }
+
+                if (savedPrompts) {
+                    setPromptsData(JSON.parse(savedPrompts));
+                } else {
+                    setPromptsData(DEFAULT_PROMPTS);
+                }
+            }, []);
+
+            // Save Data on Change
+            useEffect(() => {
+                if (categories.length > 0) {
+                    localStorage.setItem('nanobanana_categories', JSON.stringify(categories));
+                }
+                if (Object.keys(promptsData).length > 0) {
+                    localStorage.setItem('nanobanana_prompts', JSON.stringify(promptsData));
+                }
+            }, [categories, promptsData]);
+
+            const showToast = (message, type = 'success') => {
+                setToast({ message, type });
+                setTimeout(() => setToast(null), 3000);
+            };
+
+            const handleCopyPrompt = (text) => {
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showToast("プロンプトをコピーしました！");
+                } catch (err) {
+                    showToast("コピーに失敗しました", "error");
+                }
+                document.body.removeChild(textArea);
+            };
+
+            const handleAddCategory = (categoryData) => {
+                const newCategory = { ...categoryData, id: generateId() };
+                setCategories(prev => [...prev, newCategory]); 
+                setPromptsData(prev => ({ ...prev, [newCategory.id]: [] }));
+                showToast(`「${newCategory.name}」を作成しました`);
+            };
+
+            const handleUpdateCategory = (updatedData) => {
+                setCategories(prev => prev.map(c => 
+                    c.id === updatedData.id ? { ...c, ...updatedData } : c
+                ));
+                showToast("カテゴリーを更新しました");
+            };
+
+            const handleDeleteCategory = (categoryId) => {
+                setCategories(prev => prev.filter(c => c.id !== categoryId)); 
+                setPromptsData(prev => {
+                    const newData = { ...prev };
+                    delete newData[categoryId];
+                    return newData;
+                });
+                showToast("カテゴリーを削除しました");
+            };
+
+            const openEditCategoryModal = (category) => {
+                setEditingCategory(category);
+                setIsCategoryModalOpen(true);
+            };
+
+            const openAddCategoryModal = () => {
+                setEditingCategory(null);
+                setIsCategoryModalOpen(true);
+            };
+
+            const handleAddPrompt = (newPromptData) => {
+                const newPrompt = { ...newPromptData, id: generateId() };
+                setPromptsData(prev => {
+                    const categoryPrompts = prev[activeCategory] || [];
+                    return {
+                        ...prev,
+                        [activeCategory]: [newPrompt, ...categoryPrompts] 
+                    };
+                });
+                showToast("プロンプトを追加しました");
+            };
+
+            const handleDeletePrompt = (promptId) => {
+                setPromptsData(prev => {
+                    const categoryPrompts = prev[activeCategory] || [];
+                    return {
+                        ...prev,
+                        [activeCategory]: categoryPrompts.filter(p => p.id !== promptId)
+                    };
+                });
+                showToast("プロンプトを削除しました");
+            };
+
+            const activeCategoryData = activeCategory 
+                ? categories.find(c => c.id === activeCategory)
+                : null;
+
+            return (
+                <div className="min-h-screen bg-gray-50 font-sans text-gray-900 selection:bg-yellow-200 selection:text-yellow-900 pb-20">
+                    <Header onHomeClick={() => setActiveCategory(null)} />
+
+                    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                        
+                        {/* Breadcrumb / Back Navigation */}
+                        {activeCategory && (
+                            <div className="mb-6 animate-fade-in">
+                                <button 
+                                    onClick={() => setActiveCategory(null)}
+                                    className="group flex items-center text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors bg-white px-4 py-2 rounded-full shadow-sm border border-gray-100 hover:shadow-md"
+                                >
+                                    <ArrowLeft size={16} className="mr-2 group-hover:-translate-x-1 transition-transform" />
+                                    一覧に戻る
+                                </button>
+                            </div>
+                        )}
+
+                        {/* --- Home View: Categories --- */}
+                        {!activeCategory && (
+                            <div className="space-y-12 animate-fade-in">
+                                <div className="text-center max-w-2xl mx-auto mt-4 sm:mt-8">
+                                    <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-4 tracking-tight leading-tight">
+                                        作りたい画像を、<br/>
+                                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-500 to-orange-600">
+                                            一瞬で見つけよう。
+                                        </span>
+                                    </h2>
+                                    <p className="text-base sm:text-lg text-gray-500 px-4">
+                                        Nanobanana専用のプロンプトギャラリー。<br className="hidden sm:block"/>
+                                        あなただけのコレクションを作成・管理できます。
+                                    </p>
+                                    
+                                    <div className="mt-8 relative max-w-lg mx-auto px-4 sm:px-0">
+                                        <div className="absolute inset-y-0 left-4 sm:left-3 pl-3 flex items-center pointer-events-none">
+                                            <Search className="h-5 w-5 text-gray-400" />
+                                        </div>
+                                        <input
+                                            type="text"
+                                            className="block w-full pl-12 pr-4 py-4 border border-gray-200 rounded-full leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent shadow-sm transition-shadow hover:shadow-md"
+                                            placeholder="キーワード検索..."
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="px-2 sm:px-0">
+                                    <div className="flex items-center justify-between mb-6 px-2">
+                                        <h3 className="text-xl font-bold text-gray-800 flex items-center">
+                                            <Layout className="mr-2 text-yellow-500" size={20}/>
+                                            カテゴリー
+                                        </h3>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                                        {categories.map(category => (
+                                            <CategoryCard 
+                                                key={category.id} 
+                                                category={category} 
+                                                onClick={setActiveCategory} 
+                                                onDelete={handleDeleteCategory}
+                                                onEdit={openEditCategoryModal}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* FAB for Adding Category */}
+                                <Fab onClick={openAddCategoryModal} icon={Plus} label="カテゴリーを追加" />
+                            </div>
+                        )}
+
+                        {/* --- Detail View: Prompts --- */}
+                        {activeCategory && activeCategoryData && (
+                            <div className="animate-fade-in pb-16">
+                                <div className="bg-white rounded-3xl p-6 sm:p-8 mb-8 border border-gray-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                    <div className="flex items-center">
+                                        <div className={`w-14 h-14 sm:w-16 sm:h-16 ${activeCategoryData.color} rounded-2xl flex items-center justify-center text-white mr-5 shadow-lg flex-shrink-0 overflow-hidden`}>
+                                            {activeCategoryData.imageUrl ? (
+                                                <img src={activeCategoryData.imageUrl} alt="" className="w-full h-full object-cover" />
+                                            ) : (
+                                                React.createElement(getIcon(activeCategoryData.iconName), { size: 28 })
+                                            )}
+                                        </div>
+                                        <div>
+                                            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">{activeCategoryData.name}</h2>
+                                            <p className="text-gray-500 mt-1 text-sm sm:text-base">{activeCategoryData.description}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <div className="text-sm font-medium text-gray-400 bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
+                                            {promptsData[activeCategory]?.length || 0} プロンプト
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {promptsData[activeCategory]?.length > 0 ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {promptsData[activeCategory].map(item => (
+                                            <PromptCard 
+                                                key={item.id} 
+                                                item={item} 
+                                                onCopy={handleCopyPrompt} 
+                                                onDelete={handleDeletePrompt}
+                                                onImageClick={setZoomedImage}
+                                            />
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-24 bg-white rounded-3xl border border-dashed border-gray-200">
+                                        <div className="mx-auto w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                                            <Sparkles className="text-gray-300" size={32}/>
+                                        </div>
+                                        <h3 className="text-lg font-bold text-gray-900">まだプロンプトがありません</h3>
+                                        <p className="text-gray-500 mt-2 text-sm">右下のボタンから最初のプロンプトを追加しましょう！</p>
+                                    </div>
+                                )}
+
+                                {/* FAB for Adding Prompt */}
+                                <Fab onClick={() => setIsPromptModalOpen(true)} icon={Plus} label="プロンプトを追加" />
+                            </div>
+                        )}
+
+                    </main>
+
+                    {/* Modals */}
+                    <Modal 
+                        isOpen={isCategoryModalOpen} 
+                        onClose={() => setIsCategoryModalOpen(false)} 
+                        title={editingCategory ? "カテゴリーを編集" : "新しいカテゴリーを追加"}
+                    >
+                        <CategoryForm 
+                            initialData={editingCategory}
+                            onSubmit={editingCategory ? handleUpdateCategory : handleAddCategory} 
+                            onClose={() => setIsCategoryModalOpen(false)} 
+                        />
+                    </Modal>
+
+                    <Modal 
+                        isOpen={isPromptModalOpen} 
+                        onClose={() => setIsPromptModalOpen(false)} 
+                        title="プロンプトを追加"
+                    >
+                        <AddPromptForm 
+                            onSubmit={handleAddPrompt} 
+                            onClose={() => setIsPromptModalOpen(false)} 
+                        />
+                    </Modal>
+
+                    {/* Image Zoom Modal */}
+                    {zoomedImage && (
+                        <ImageZoomModal 
+                            src={zoomedImage} 
+                            onClose={() => setZoomedImage(null)} 
+                        />
+                    )}
+
+                    {/* Toast Notification */}
+                    {toast && (
+                        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

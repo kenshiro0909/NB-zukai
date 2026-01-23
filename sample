@@ -1,0 +1,136 @@
+import React, { useState, useEffect } from 'react';
+import { Gift, FileText, ChevronRight, AlertTriangle, Clock, Zap, ShieldCheck } from 'lucide-react';
+
+export default function App() {
+  const [isHoveredTop, setIsHoveredTop] = useState(false);
+
+  // 背景のパルスアニメーション用のスタイル
+  const pulseKeyframes = `
+    @keyframes subtle-pulse {
+      0%, 100% { opacity: 0.6; transform: scale(1); }
+      50% { opacity: 0.8; transform: scale(1.02); }
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-10px); }
+    }
+    @keyframes shimmer {
+      0% { background-position: -200% center; }
+      100% { background-position: 200% center; }
+    }
+  `;
+
+  return (
+    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans text-slate-100">
+      <style>{pulseKeyframes}</style>
+      
+      {/* 背景装飾 */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-900/30 rounded-full blur-[100px] animate-[pulse_8s_ease-in-out_infinite]"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-900/20 rounded-full blur-[100px] animate-[pulse_10s_ease-in-out_infinite_reverse]"></div>
+        <div className="absolute top-[40%] left-[60%] w-[30%] h-[30%] bg-pink-900/20 rounded-full blur-[80px]"></div>
+      </div>
+
+      <div className="w-full max-w-md z-10 space-y-8">
+        
+        {/* ヘッダーエリア（簡易ロゴや挨拶） */}
+        <div className="text-center space-y-2 mb-4 animate-[float_6s_ease-in-out_infinite]">
+          <h1 className="text-2xl font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">
+            WELCOME
+          </h1>
+          <p className="text-slate-400 text-sm">コミュニティポータルへようこそ</p>
+        </div>
+
+        {/* コンテナ */}
+        <div className="space-y-6">
+          
+          {/* 1. 特典受け取りリンク (緊急性・最優先) */}
+          <div 
+            className="relative group"
+            onMouseEnter={() => setIsHoveredTop(true)}
+            onMouseLeave={() => setIsHoveredTop(false)}
+          >
+            {/* 背景の発光エフェクト */}
+            <div className="absolute -inset-1 bg-gradient-to-r from-red-600 via-orange-500 to-yellow-500 rounded-2xl blur opacity-75 group-hover:opacity-100 transition duration-500 animate-[subtle-pulse_2s_infinite]"></div>
+            
+            {/* メインカード */}
+            <a 
+              href="#" // 実際のリンク先に変更してください
+              className="relative block bg-gradient-to-br from-red-600 via-red-500 to-orange-600 rounded-2xl p-1 overflow-hidden transition-transform duration-300 transform group-hover:scale-[1.02] group-active:scale-[0.98] shadow-2xl shadow-red-900/50"
+            >
+              <div className="bg-gradient-to-br from-red-500/10 to-transparent absolute inset-0 z-0"></div>
+              
+              {/* キラッと光るエフェクト */}
+              <div className="absolute inset-0 z-10 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]" style={{backgroundSize: '200% 100%'}}></div>
+
+              <div className="relative z-20 bg-slate-900/10 backdrop-blur-sm rounded-xl p-6 flex flex-col items-center justify-between h-full border border-white/20">
+                
+                {/* 緊急バッジ */}
+                <div className="absolute top-3 right-3 flex items-center space-x-1 bg-white/90 text-red-600 text-[10px] font-bold px-2 py-1 rounded-full shadow-lg animate-bounce">
+                  <Clock size={10} />
+                  <span>期限間近</span>
+                </div>
+
+                <div className="flex items-center w-full mb-3">
+                  <div className="bg-white/20 p-3 rounded-full mr-4 shadow-inner">
+                    <Gift className="text-white w-8 h-8 animate-[pulse_2s_infinite]" />
+                  </div>
+                  <div className="flex-1">
+                    <h2 className="text-xl font-bold text-white leading-tight flex items-center">
+                      特典を受け取る
+                      <Zap size={18} className="ml-2 text-yellow-300 fill-current" />
+                    </h2>
+                    <p className="text-red-100 text-xs mt-1 font-medium opacity-90">
+                      ※受け取り期限が迫っています
+                    </p>
+                  </div>
+                </div>
+
+                {/* ボタン風装飾 */}
+                <div className="w-full bg-white text-red-600 font-bold py-3 rounded-lg text-center flex items-center justify-center space-x-2 shadow-lg group-hover:bg-red-50 transition-colors mt-2">
+                  <span>今すぐ確認する</span>
+                  <ChevronRight size={18} strokeWidth={3} className={`transform transition-transform duration-300 ${isHoveredTop ? 'translate-x-1' : ''}`} />
+                </div>
+              </div>
+            </a>
+          </div>
+
+          {/* 2. オープンチャットのルール (クリーン・信頼感) */}
+          <div className="relative group">
+            <a 
+              href="#" // 実際のリンク先に変更してください
+              className="block relative bg-slate-800/40 backdrop-blur-md border border-slate-700/50 hover:border-blue-400/50 rounded-2xl p-6 transition-all duration-300 hover:bg-slate-800/60 shadow-lg hover:shadow-blue-900/20 group-active:scale-[0.99]"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="bg-gradient-to-br from-blue-500 to-cyan-400 p-3 rounded-xl shadow-lg transform rotate-3 group-hover:rotate-0 transition-transform duration-300">
+                    <ShieldCheck className="text-white w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-100 group-hover:text-blue-200 transition-colors">
+                      オプチャのルール
+                    </h3>
+                    <p className="text-slate-400 text-xs mt-0.5">
+                      参加前に必ずお読みください
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="w-8 h-8 rounded-full bg-slate-700/50 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
+                  <ChevronRight className="text-slate-400 group-hover:text-blue-300 w-5 h-5" />
+                </div>
+              </div>
+            </a>
+          </div>
+
+        </div>
+
+        {/* フッター */}
+        <div className="text-center pt-8 opacity-40">
+          <p className="text-[10px] text-slate-500">© 2024 Community Portal. All rights reserved.</p>
+        </div>
+
+      </div>
+    </div>
+  );
+}
